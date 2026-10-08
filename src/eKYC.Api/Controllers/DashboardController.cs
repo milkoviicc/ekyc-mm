@@ -11,6 +11,7 @@ namespace eKYC.Api.Controllers;
 [ApiController]
 [Route("api/dashboard")]
 [Authorize]
+[RequireObject("tabNadzor")]
 public sealed class DashboardController : ControllerBase
 {
     private readonly IDashboardService _dashboard;

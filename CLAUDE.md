@@ -59,7 +59,7 @@ Same three patterns as this workspace's other .NET projects, adapted for SQL Ser
 
 ### Pattern 2: Pessimistic Locking (edit-session lock)
 - Legacy app uses an `A_Object_Locks` table (Object_Id, Object_Class, Object_Name, User_Id, Locked_At, Computer_Name) to block a second user from opening a record someone else is editing.
-- Replace with `sp_getapplock`/`sp_releaseapplock` scoped to the edit session, or keep a table-based equivalent — not yet implemented (workstream 2).
+- **Implemented (2026-10-08), table-based**: `POST api/locks` takes the lock atomically (`UPDLOCK, HOLDLOCK`), `PUT api/locks/{id}` is the heartbeat, `DELETE` releases; a lock not refreshed for `ObjectLocks:TtlMinutes` (30) counts as abandoned and can be taken over. The React edit dialogs use it via `useEditLock`; Blazor does not yet. Admin list/release lives in Administriranje -> Zaključavanje.
 - **This is distinct from `row_version` above** — pessimistic locking blocks the second editor up front; optimistic locking catches the conflict at save time. Both are being built; don't conflate them.
 
 ### Pattern 3: Idempotent Insert
@@ -177,3 +177,10 @@ Note: this solution uses the newer **`.slnx`** format (`dotnet new sln` defaults
 column names (`Clnt_Id`, `HBOR_ID`, `row_version`) and the others in PascalCase (`ClntId`). The React types in
 `src/eKYC.Web.React/src/models` mirror this 1:1 — update them when a backend model changes. Blazor is unaffected
 (its `HttpClient` JSON reading is case-insensitive).
+
+## Local-Only Files (not in git)
+
+- `New Microsoft Word Document.docx` (repo root) is the technical migration analysis of HBOR's legacy eKYC system
+  (stack read, live-schema audit, the migration decisions above). It is client-internal, so it is **git-ignored on purpose** —
+  keep it local, never commit or publish it, and read it for the full narrative behind the decisions in this file.
+- `.env` (DB credentials for the remote server) is git-ignored too; `.env.example` is the committed template.

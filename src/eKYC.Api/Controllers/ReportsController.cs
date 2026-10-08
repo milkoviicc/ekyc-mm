@@ -10,6 +10,7 @@ namespace eKYC.Api.Controllers;
 [ApiController]
 [Route("api/reports")]
 [Authorize]
+[RequireObject("tabReports")]
 public sealed class ReportsController : ControllerBase
 {
     private readonly IReportRiskService _reportRisk;

@@ -15,6 +15,7 @@ namespace eKYC.Api.Controllers;
 [ApiController]
 [Route("api/admin/locks")]
 [Authorize(Roles = "ADMIN")]
+[RequireObject("tabAdmin")]
 public sealed class A_Object_LocksController : ControllerBase
 {
     private readonly IA_Object_LocksService _locks;

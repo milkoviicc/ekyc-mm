@@ -1,13 +1,15 @@
 import { Alert } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { useEffect, useMemo, useState } from 'react';
+import { usePermissions } from '../../../hooks/usePermissions';
 import { useProcessingStatuses, useRiskEstimates } from '../../../hooks/useReferenceData';
 import { isConflict } from '../../../http-common';
 import { CL_Clnt } from '../../../models';
 import { getClients, updateClient } from '../../../store/clients';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { showSuccessMessage, showWarningMessage } from '../../../store/message';
-import AppDataGrid from '../../shared/AppDataGrid';
+import AppDataGrid, { clickableRowsSx } from '../../shared/AppDataGrid';
+import EmptyState from '../../shared/EmptyState';
 import LoadingBlock from '../../shared/LoadingBlock';
 import PageHeader from '../../shared/PageHeader';
 import ClientEditDialog from './ClientEditDialog';
@@ -17,6 +19,8 @@ export default function Clients() {
   const dispatch = useAppDispatch();
   const { clients, pendingAction, error } = useAppSelector((state) => state.clients);
   const processingStatuses = useProcessingStatuses();
+  const { hasRole } = usePermissions();
+  const canEdit = hasRole('UNOS', 'ADMIN'); // same roles as PUT api/clients
   const riskEstimates = useRiskEstimates();
 
   const [editing, setEditing] = useState<CL_Clnt | null>(null);
@@ -55,7 +59,7 @@ export default function Clients() {
 
   return (
     <>
-      <PageHeader title="Clients" subtitle="Click a row to edit." />
+      <PageHeader title="Clients" subtitle={canEdit ? 'Click a row to edit.' : 'Read only - editing needs the UNOS or ADMIN role.'} />
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -66,14 +70,14 @@ export default function Clients() {
           <LoadingBlock />
         )
       ) : clients.length === 0 ? (
-        <Alert severity="info">No clients found.</Alert>
+        <EmptyState title="Nema klijenata" />
       ) : (
         <AppDataGrid
           rows={clients}
           columns={columns}
           getRowId={(row) => row.Clnt_Id}
-          onRowClick={(params) => setEditing({ ...params.row })}
-          sx={{ '& .MuiDataGrid-row': { cursor: 'pointer' } }}
+          onRowClick={(params) => canEdit && setEditing({ ...params.row })}
+          sx={clickableRowsSx}
         />
       )}
 

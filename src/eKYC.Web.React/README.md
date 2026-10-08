@@ -29,13 +29,21 @@ src/
   models/<area>/*.ts          one TypeScript type per backend model - see below
   store/<feature>/            Redux Toolkit: actions.ts + reducer.ts + *.dto.ts + index.ts
   store/utils/                createListFeature (thunk + reducer for plain "GET list" endpoints)
-  hooks/                      useReferenceData (loads lookups once)
+  hooks/                      useReferenceData (loads lookups once), usePermissions (api/me), useEditLock (pessimistic lock), useUrlTab
   modules/layout/             Layout (app bar + drawer), Sidebar
   modules/shared/             AppDataGrid, SelectField, ConfirmDialog, MessageManager, PageHeader, ...
   modules/sections/<screen>/  one folder per screen
   utils/                      routes, formatting, query-param mapping, dashboard row colors
   styles/theme.ts             MUI theme (Croatian locale)
 ```
+
+## Design system
+
+- **Theme**: all colors, radius and typography live in `styles/theme.ts` (Inter variable font, 12px radius, soft borders instead of shadows). Light and dark mode: follows the OS, the toggle in the top bar remembers the choice (`styles/ColorModeProvider.tsx`).
+- **Navigation**: grouped sidebar (Rad / Pregled / Sustav) that collapses to an icon rail; breadcrumbs on every page; the selected tab of Izvješća, Administriranje and Klijenti is kept in the URL (`?tab=`), so tabs can be bookmarked and the back button works.
+- **Lists**: `AppDataGrid` (toolbar with search, column picker, filters, density, CSV export), status and risk shown as colored chips (`utils/statusColors.ts`), collapsible `FilterBar` that shows applied filters as removable chips, skeleton loading and friendly empty states.
+- **Dashboard**: KPI tiles that double as quick filters, rows tinted by meaning (red = needs change / high-risk change, amber = rejected, green = active) instead of saturated colors, details side panel on row click.
+- **Accessibility**: skip link, visible focus ring, real buttons with `aria-pressed` for toggles, `prefers-reduced-motion` respected, status never conveyed by color alone (chip text + legend).
 
 ## Types match the API one-to-one
 
@@ -63,7 +71,7 @@ When a backend model changes, update the matching type here.
 | `/klijenti-analiza`, `/klijenti-pregled` | Clients by type (4 tabs), filterable |
 | `/izvjesca` | Risk reports (3 tabs) |
 | `/revizija` | Revisions: filter, create, edit, delete |
-| `/administriranje` | Access rights (read-only A_ tables), locks (view / release), placeholders |
+| `/administriranje` | Prava pristupa (users + roles, role x screen matrix, screens with their roles), Postavke (parameters), Zaključavanje (locks), Dnevnik promjena (audit trail) |
 | `/clients` | CL_Clnt grid + edit dialog (optimistic locking) |
 | `/reference-data` | All lookup tables |
 

@@ -12,6 +12,8 @@ import dayjs, { Dayjs } from 'dayjs';
 import { useState } from 'react';
 import { CL_Doc_Revisions, RevisionType } from '../../../models';
 import { toApiDate } from '../../../utils/formatting';
+import { useEditLock } from '../../../hooks/useEditLock';
+import EditLockNotice, { editLockBlocks } from '../../shared/EditLockNotice';
 import { SelectField } from '../../shared/SelectField';
 
 type Props = {
@@ -39,6 +41,10 @@ export default function RevisionEditDialog(props: Props) {
   const [recommendation, setRecommendation] = useState(revision.Recommendation ?? '');
   const [submitted, setSubmitted] = useState(false);
 
+  // Pessimistic lock (Pattern 2) while an existing revision is open; a new one has nothing to lock yet.
+  const lock = useEditLock(isNew ? null : { Object_Id: revision.CL_Doc_Revision_Id, Object_Class: 'CL_Doc_Revisions', Object_Name: revision.Subject });
+  const readOnly = editLockBlocks(lock);
+
   const typeMissing = typeId === null;
   const dateMissing = revDate === null || !revDate.isValid();
   const doneByMissing = doneBy.trim().length === 0;
@@ -64,7 +70,11 @@ export default function RevisionEditDialog(props: Props) {
     <Dialog open={open} onClose={onCancel} maxWidth="sm" fullWidth>
       <DialogTitle>{isNew ? 'Nova revizija' : 'Promjena revizije'}</DialogTitle>
       <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+        <Box sx={{ mb: 1 }}>
+          <EditLockNotice lock={lock} />
+        </Box>
+        {/* A disabled fieldset disables every native input inside it, including the date pickers. */}
+        <Box component="fieldset" disabled={readOnly} sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1, border: 0, m: 0, p: 0, minWidth: 0 }}>
           <SelectField
             label="Vrsta revizije"
             required
@@ -126,7 +136,7 @@ export default function RevisionEditDialog(props: Props) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onCancel}>Odustanak</Button>
-        <Button variant="contained" onClick={accept} disabled={saving}>
+        <Button variant="contained" onClick={accept} disabled={saving || readOnly}>
           Prihvat
         </Button>
       </DialogActions>

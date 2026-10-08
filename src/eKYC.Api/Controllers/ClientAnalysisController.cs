@@ -11,6 +11,7 @@ namespace eKYC.Api.Controllers;
 [ApiController]
 [Route("api/client-analysis")]
 [Authorize]
+[RequireObject("tabClients", "tabOverview")]
 public sealed class ClientAnalysisController : ControllerBase
 {
     private readonly IClientAnalysisService _clientAnalysis;

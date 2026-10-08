@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IA_ObjctRepository, A_ObjctRepository>();
         services.AddScoped<IA_Objct_TypsRepository, A_Objct_TypsRepository>();
         services.AddScoped<IA_Apl_PrmtrRepository, A_Apl_PrmtrRepository>();
+        services.AddScoped<IOperation_LogRepository, Operation_LogRepository>();
 
         return services;
     }

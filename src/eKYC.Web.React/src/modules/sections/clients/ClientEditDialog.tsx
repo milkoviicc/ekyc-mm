@@ -9,6 +9,8 @@ import {
 } from '@mui/material';
 import { useState } from 'react';
 import { ClientProcessingStatus, CL_Clnt, RiskEstimate } from '../../../models';
+import { useEditLock } from '../../../hooks/useEditLock';
+import EditLockNotice, { editLockBlocks } from '../../shared/EditLockNotice';
 import { SelectField } from '../../shared/SelectField';
 
 type Props = {
@@ -37,6 +39,10 @@ export default function ClientEditDialog({ open, client, processingStatuses, ris
   const [watchlist, setWatchlist] = useState<string>(client.WtchLst_Ind || 'N');
   const [remark, setRemark] = useState(client.Rmrk ?? '');
 
+  // Pessimistic lock (Pattern 2) for as long as the dialog is open.
+  const lock = useEditLock({ Object_Id: client.Clnt_Id, Object_Class: 'CL_Clnt', Object_Name: `Klijent #${client.Clnt_Id}` });
+  const readOnly = editLockBlocks(lock);
+
   const accept = () =>
     onSave({
       ...client,
@@ -52,7 +58,10 @@ export default function ClientEditDialog({ open, client, processingStatuses, ris
     <Dialog open={open} onClose={onCancel} maxWidth="sm" fullWidth>
       <DialogTitle>Klijent #{client.Clnt_Id}</DialogTitle>
       <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+        <Box sx={{ mb: 1 }}>
+          <EditLockNotice lock={lock} />
+        </Box>
+        <Box component="fieldset" disabled={readOnly} sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1, border: 0, m: 0, p: 0, minWidth: 0 }}>
           <TextField size="small" label="Tip klijenta" value={client.Clnt_Typ_Cd} slotProps={{ input: { readOnly: true } }} />
           <SelectField
             label="Status obrade"
@@ -97,7 +106,7 @@ export default function ClientEditDialog({ open, client, processingStatuses, ris
       </DialogContent>
       <DialogActions>
         <Button onClick={onCancel}>Odustanak</Button>
-        <Button variant="contained" onClick={accept} disabled={saving}>
+        <Button variant="contained" onClick={accept} disabled={saving || readOnly}>
           Spremi
         </Button>
       </DialogActions>

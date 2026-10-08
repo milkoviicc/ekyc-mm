@@ -18,19 +18,24 @@ public sealed class DevelopmentAuthenticationHandler : AuthenticationHandler<Aut
 {
     public const string SchemeName = "DevelopmentBypass";
 
+    private readonly string _loginName;
+
     public DevelopmentAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
-        UrlEncoder encoder)
+        UrlEncoder encoder,
+        IConfiguration configuration)
         : base(options, logger, encoder)
     {
+        // Must match an A_Usr.Lgn_Nm for /api/me and edit locks to attribute actions to a user; "Admin" is the existing administrator.
+        _loginName = configuration["Dev:LoginName"] ?? "Admin";
     }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var identity = new ClaimsIdentity(
         [
-            new Claim(ClaimTypes.Name, "dev-user"),
+            new Claim(ClaimTypes.Name, _loginName),
             new Claim(ClaimTypes.Role, "UNOS"),
             new Claim(ClaimTypes.Role, "ADMIN"),
         ], SchemeName);

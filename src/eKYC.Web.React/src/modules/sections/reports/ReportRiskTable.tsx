@@ -1,46 +1,63 @@
-import { Chip } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { useMemo } from 'react';
+import { useProcessingStatuses } from '../../../hooks/useReferenceData';
 import { ReportRiskRow } from '../../../models';
 import { formatDate } from '../../../utils/formatting';
 import AppDataGrid from '../../shared/AppDataGrid';
+import { RiskChip, StatusChip } from '../../shared/StatusChips';
 
 type Props = {
   rows: ReportRiskRow[];
 };
 
-/** Grid shared by every risk-report panel on "Izvješća". */
+/** Grid shared by every risk-report panel on "Izvješća". The toolbar's export button gives a CSV of the visible rows. */
 export default function ReportRiskTable({ rows }: Props) {
+  const statuses = useProcessingStatuses();
   const columns = useMemo<GridColDef<ReportRiskRow>[]>(
     () => [
-      { field: 'ClntNm', headerName: 'Naziv klijenta', flex: 1.5, minWidth: 200 },
-      { field: 'VrstaKlijenta', headerName: 'Vrsta', width: 140 },
-      { field: 'Oib', headerName: 'OIB', width: 130 },
+      {
+        field: 'ClntNm',
+        headerName: 'Klijent',
+        flex: 1.6,
+        minWidth: 240,
+        renderCell: (params) => (
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="body2" noWrap sx={{ fontWeight: 600, lineHeight: 1.3 }}>
+              {params.row.ClntNm}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" noWrap component="div">
+              {params.row.VrstaKlijenta}
+              {params.row.Oib ? ` · OIB ${params.row.Oib}` : ''}
+            </Typography>
+          </Box>
+        ),
+      },
       {
         field: 'ClntPrcsngSt',
         headerName: 'Status obrade',
         width: 160,
-        renderCell: (params) => <Chip size="small" color="info" label={String(params.value ?? '')} />,
+        renderCell: (params) => (
+          <StatusChip code={params.row.ClntPrcsngSt} label={statuses?.find((s) => s.ClntPrcsStCd === params.row.ClntPrcsngSt)?.Status} />
+        ),
       },
-      { field: 'RiskLevel', headerName: 'Rizik', width: 130 },
-      { field: 'RskPnts', headerName: 'Bodovi', type: 'number', width: 90 },
-      { field: 'PepInd', headerName: 'PEP', width: 90 },
-      { field: 'WtchLstInd', headerName: 'Watchlist', width: 100 },
+      { field: 'RiskLevel', headerName: 'Procjena', width: 170 },
       {
-        field: 'AddDt',
-        headerName: 'Datum unosa',
+        field: 'RskPnts',
+        headerName: 'Rizik',
         width: 130,
-        valueFormatter: (value: string) => formatDate(value),
+        type: 'number',
+        headerAlign: 'left',
+        align: 'left',
+        renderCell: (params) => <RiskChip points={params.row.RskPnts} />,
       },
-      {
-        field: 'MdfDt',
-        headerName: 'Zadnja izmjena',
-        width: 140,
-        valueFormatter: (value: string) => formatDate(value),
-      },
+      { field: 'PepInd', headerName: 'PEP', width: 80 },
+      { field: 'WtchLstInd', headerName: 'Watchlist', width: 100 },
+      { field: 'AddDt', headerName: 'Datum unosa', width: 130, valueFormatter: (value: string) => formatDate(value) },
+      { field: 'MdfDt', headerName: 'Zadnja izmjena', width: 140, valueFormatter: (value: string) => formatDate(value) },
     ],
-    [],
+    [statuses],
   );
 
-  return <AppDataGrid rows={rows} columns={columns} getRowId={(row) => row.ClntId} />;
+  return <AppDataGrid rows={rows} columns={columns} getRowId={(row) => row.ClntId} getRowHeight={() => 56} />;
 }

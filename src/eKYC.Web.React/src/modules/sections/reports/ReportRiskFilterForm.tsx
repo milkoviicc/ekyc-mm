@@ -1,64 +1,74 @@
-import { Box, Button, Paper } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import { useState } from 'react';
 import { ClientType, ReportRiskFilter, RiskEstimate } from '../../../models';
-import { toApiDate } from '../../../utils/formatting';
-import FilterGrid from '../../shared/FilterGrid';
+import { formatDate, toApiDate } from '../../../utils/formatting';
+import FilterBar, { ActiveFilter } from '../../shared/FilterBar';
 import { MultiSelectField } from '../../shared/SelectField';
 
+type DateKey = 'AddDtFrom' | 'AddDtTo' | 'MdfDtFrom' | 'MdfDtTo';
+
+const DATE_FIELDS: { key: DateKey; label: string }[] = [
+  { key: 'AddDtFrom', label: 'Unos od' },
+  { key: 'AddDtTo', label: 'Unos do' },
+  { key: 'MdfDtFrom', label: 'Izmjena od' },
+  { key: 'MdfDtTo', label: 'Izmjena do' },
+];
+
 type Props = {
-  filter: ReportRiskFilter;
-  onChange: (filter: ReportRiskFilter) => void;
   clientTypes: ClientType[] | null;
   riskEstimates: RiskEstimate[] | null;
   onApply: (filter: ReportRiskFilter) => void;
 };
 
 /** Date-range + client-type + risk-level filter shared by the "za razdoblje" and "za dan" panels (TkPanelReportsFilter01). */
-export default function ReportRiskFilterForm({ filter, onChange, clientTypes, riskEstimates, onApply }: Props) {
-  const datePicker = (label: string, key: 'AddDtFrom' | 'AddDtTo' | 'MdfDtFrom' | 'MdfDtTo') => (
-    <DatePicker
-      label={label}
-      value={filter[key] ? dayjs(filter[key]) : null}
-      onChange={(value) => onChange({ ...filter, [key]: toApiDate(value) })}
-      slotProps={{ textField: { size: 'small', fullWidth: true }, field: { clearable: true } }}
-    />
-  );
+export default function ReportRiskFilterForm({ clientTypes, riskEstimates, onApply }: Props) {
+  const [draft, setDraft] = useState<ReportRiskFilter>({});
+  const [applied, setApplied] = useState<ReportRiskFilter>({});
 
-  const clear = () => {
-    const empty: ReportRiskFilter = {};
-    onChange(empty);
-    onApply(empty);
+  const apply = (filter: ReportRiskFilter) => {
+    setDraft(filter);
+    setApplied(filter);
+    onApply(filter);
   };
 
+  const active: ActiveFilter[] = [];
+  for (const { key, label } of DATE_FIELDS) {
+    const value = applied[key];
+    if (value) active.push({ key, label: `${label}: ${formatDate(value)}`, onDelete: () => apply({ ...applied, [key]: null }) });
+  }
+  if (applied.ClntTypCds?.length) {
+    const names = applied.ClntTypCds.map((c) => clientTypes?.find((t) => t.ClntTypCd === c)?.ClntTypDspn ?? c).join(', ');
+    active.push({ key: 'types', label: `Vrsta: ${names}`, onDelete: () => apply({ ...applied, ClntTypCds: null }) });
+  }
+  if (applied.RiskEstIds?.length) {
+    const names = applied.RiskEstIds.map((id) => riskEstimates?.find((r) => r.RskEstId === id)?.RiskLevel ?? id).join(', ');
+    active.push({ key: 'risk', label: `Rizičnost: ${names}`, onDelete: () => apply({ ...applied, RiskEstIds: null }) });
+  }
+
   return (
-    <Paper sx={{ p: 2, mb: 2 }} elevation={1}>
-      <FilterGrid>
-        {datePicker('Ndnk. od', 'AddDtFrom')}
-        {datePicker('Ndnk. do', 'AddDtTo')}
-        {datePicker('Ndnk. akt. od', 'MdfDtFrom')}
-        {datePicker('Ndnk. akt. do', 'MdfDtTo')}
-        <MultiSelectField
-          label="Vrsta klijenta"
-          value={filter.ClntTypCds ?? []}
-          onChange={(value) => onChange({ ...filter, ClntTypCds: value })}
-          options={(clientTypes ?? []).map((ct) => ({ value: ct.ClntTypCd, label: ct.ClntTypDspn ?? ct.ClntTypCd }))}
+    <FilterBar active={active} onApply={() => apply(draft)} onClear={() => apply({})}>
+      {DATE_FIELDS.map(({ key, label }) => (
+        <DatePicker
+          key={key}
+          label={label}
+          value={draft[key] ? dayjs(draft[key]) : null}
+          onChange={(value) => setDraft({ ...draft, [key]: toApiDate(value) })}
+          slotProps={{ textField: { size: 'small', fullWidth: true }, field: { clearable: true } }}
         />
-        <MultiSelectField
-          label="Rizičnost"
-          value={filter.RiskEstIds ?? []}
-          onChange={(value) => onChange({ ...filter, RiskEstIds: value })}
-          options={(riskEstimates ?? []).map((re) => ({ value: re.RskEstId, label: re.RiskLevel ?? String(re.RskEstId) }))}
-        />
-      </FilterGrid>
-      <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-        <Button variant="contained" onClick={() => onApply(filter)}>
-          Primjeni filtar
-        </Button>
-        <Button variant="outlined" onClick={clear}>
-          Isprazni filtar
-        </Button>
-      </Box>
-    </Paper>
+      ))}
+      <MultiSelectField
+        label="Vrsta klijenta"
+        value={draft.ClntTypCds ?? []}
+        onChange={(value) => setDraft({ ...draft, ClntTypCds: value })}
+        options={(clientTypes ?? []).map((ct) => ({ value: ct.ClntTypCd, label: ct.ClntTypDspn ?? ct.ClntTypCd }))}
+      />
+      <MultiSelectField
+        label="Rizičnost"
+        value={draft.RiskEstIds ?? []}
+        onChange={(value) => setDraft({ ...draft, RiskEstIds: value })}
+        options={(riskEstimates ?? []).map((re) => ({ value: re.RskEstId, label: re.RiskLevel ?? String(re.RskEstId) }))}
+      />
+    </FilterBar>
   );
 }

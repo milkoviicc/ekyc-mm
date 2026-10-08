@@ -5,13 +5,14 @@ using eKYC.Application.ReferenceData;
 using eKYC.Application.Reports;
 using eKYC.Application.Revisions;
 using eKYC.Application.Tenancy;
+using eKYC.Domain.Admin;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace eKYC.Application;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddEkycApplication(this IServiceCollection services)
+    public static IServiceCollection AddEkycApplication(this IServiceCollection services, Action<ObjectLockSettings>? configureLocks = null)
     {
         services.AddScoped<IReferenceDataService, ReferenceDataService>();
         services.AddScoped<ICL_ClntService, CL_ClntService>();
@@ -27,6 +28,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IA_ObjctService, A_ObjctService>();
         services.AddScoped<IA_Objct_TypsService, A_Objct_TypsService>();
         services.AddScoped<IA_Apl_PrmtrService, A_Apl_PrmtrService>();
+        services.AddScoped<IOperation_LogService, Operation_LogService>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IAuditTrail, AuditTrail>();
+
+        var lockSettings = new ObjectLockSettings();
+        configureLocks?.Invoke(lockSettings);
+        services.AddSingleton(lockSettings);
         services.AddScoped<ICurrentTenantProvider, SingleTenantProvider>();
 
         return services;

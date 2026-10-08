@@ -14,6 +14,7 @@ namespace eKYC.Api.Controllers;
 [ApiController]
 [Route("api/revisions")]
 [Authorize]
+[RequireObject("tabRevision")]
 public sealed class CL_Doc_RevisionsController : ControllerBase
 {
     private readonly ICL_Doc_RevisionsService _revisions;

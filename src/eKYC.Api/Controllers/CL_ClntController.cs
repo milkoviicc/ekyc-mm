@@ -14,6 +14,7 @@ namespace eKYC.Api.Controllers;
 [ApiController]
 [Route("api/clients")]
 [Authorize]
+[RequireObject("tabClients", "tabOverview", "tabAdmin")]
 public sealed class CL_ClntController : ControllerBase
 {
     private readonly ICL_ClntService _clients;

@@ -63,7 +63,9 @@ builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.P
 builder.Services.AddOpenApi();
 
 builder.Services.AddEkycDataAccess();
-builder.Services.AddEkycApplication();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<eKYC.Application.Admin.ICurrentUserContext, HttpContextCurrentUserContext>();
+builder.Services.AddEkycApplication(locks => builder.Configuration.GetSection("ObjectLocks").Bind(locks));
 
 // Windows-integrated SSO (SPNEGO/Kerberos), replacing the legacy app's Spring Security Kerberos setup —
 // see the eKYC migration analysis, §03/§08. Role checks (UNOS/ODOBR1/ODOBR2/ADMIN/...) come from AD group

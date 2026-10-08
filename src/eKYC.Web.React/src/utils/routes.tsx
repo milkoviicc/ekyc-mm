@@ -1,13 +1,14 @@
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import FactCheckIcon from '@mui/icons-material/FactCheck';
-import ListIcon from '@mui/icons-material/List';
-import PeopleIcon from '@mui/icons-material/People';
-import SearchIcon from '@mui/icons-material/Search';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
+import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
+import ListAltOutlinedIcon from '@mui/icons-material/ListAltOutlined';
+import ManageSearchOutlinedIcon from '@mui/icons-material/ManageSearchOutlined';
+import PeopleOutlineOutlinedIcon from '@mui/icons-material/PeopleOutlineOutlined';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { ReactElement } from 'react';
 import { Route } from 'react-router-dom';
+import RequireAccess from '../modules/shared/RequireAccess';
 import Administration from '../modules/sections/administration/Administration';
 import ClientAnalysis from '../modules/sections/clientAnalysis/ClientAnalysis';
 import ClientOverview from '../modules/sections/clientAnalysis/ClientOverview';
@@ -28,24 +29,89 @@ export const ROUTES = {
   referenceData: '/reference-data',
 } as const;
 
+export type NavGroup = 'Rad' | 'Pregled' | 'Sustav';
+
 export type AppRoute = {
   path: string;
   label: string;
+  group: NavGroup;
+  /** A_Objct.Asmbly_Cd codes (tabs); the user needs at least one of them to open this screen. Empty = open to everyone. */
+  objectCodes: readonly string[];
   icon: ReactElement;
   element: ReactElement;
 };
 
-/** Same screens, labels and URLs as the Blazor app's NavMenu. */
+/** Same screens, labels and URLs as the Blazor app, grouped by what the user is doing. */
 export const APP_ROUTES: AppRoute[] = [
-  { path: ROUTES.dashboard, label: 'Nadzorna ploča', icon: <DashboardIcon />, element: <Dashboard /> },
-  { path: ROUTES.clientAnalysis, label: 'Klijenti - analiza', icon: <SearchIcon />, element: <ClientAnalysis /> },
-  { path: ROUTES.clientOverview, label: 'Klijenti - pregled', icon: <VisibilityIcon />, element: <ClientOverview /> },
-  { path: ROUTES.reports, label: 'Izvješća', icon: <AssessmentIcon />, element: <Reports /> },
-  { path: ROUTES.revisions, label: 'Revizija', icon: <FactCheckIcon />, element: <Revision /> },
-  { path: ROUTES.administration, label: 'Administriranje', icon: <AdminPanelSettingsIcon />, element: <Administration /> },
-  { path: ROUTES.clients, label: 'Clients', icon: <PeopleIcon />, element: <Clients /> },
-  { path: ROUTES.referenceData, label: 'Reference Data', icon: <ListIcon />, element: <ReferenceData /> },
+  {
+    path: ROUTES.dashboard,
+    label: 'Nadzorna ploča',
+    group: 'Rad',
+    objectCodes: ['tabNadzor'],
+    icon: <DashboardOutlinedIcon />,
+    element: <Dashboard />,
+  },
+  {
+    path: ROUTES.clientAnalysis,
+    label: 'Klijenti - analiza',
+    group: 'Rad',
+    objectCodes: ['tabClients'],
+    icon: <ManageSearchOutlinedIcon />,
+    element: <ClientAnalysis />,
+  },
+  {
+    path: ROUTES.revisions,
+    label: 'Revizija',
+    group: 'Rad',
+    objectCodes: ['tabRevision'],
+    icon: <FactCheckOutlinedIcon />,
+    element: <Revision />,
+  },
+  {
+    path: ROUTES.clientOverview,
+    label: 'Klijenti - pregled',
+    group: 'Pregled',
+    objectCodes: ['tabOverview'],
+    icon: <VisibilityOutlinedIcon />,
+    element: <ClientOverview />,
+  },
+  {
+    path: ROUTES.reports,
+    label: 'Izvješća',
+    group: 'Pregled',
+    objectCodes: ['tabReports'],
+    icon: <AssessmentOutlinedIcon />,
+    element: <Reports />,
+  },
+  {
+    path: ROUTES.administration,
+    label: 'Administriranje',
+    group: 'Sustav',
+    objectCodes: ['tabAdmin'],
+    icon: <AdminPanelSettingsOutlinedIcon />,
+    element: <Administration />,
+  },
+  {
+    path: ROUTES.clients,
+    label: 'Clients',
+    group: 'Sustav',
+    objectCodes: ['tabClients', 'tabAdmin'],
+    icon: <PeopleOutlineOutlinedIcon />,
+    element: <Clients />,
+  },
+  {
+    path: ROUTES.referenceData,
+    label: 'Reference Data',
+    group: 'Sustav',
+    objectCodes: ['tabClients', 'tabOverview', 'tabAdmin'],
+    icon: <ListAltOutlinedIcon />,
+    element: <ReferenceData />,
+  },
 ];
 
+export const NAV_GROUPS: NavGroup[] = ['Rad', 'Pregled', 'Sustav'];
+
 export const renderAllRoutes = () =>
-  APP_ROUTES.map((route) => <Route key={route.path} path={route.path} element={route.element} />);
+  APP_ROUTES.map((route) => (
+    <Route key={route.path} path={route.path} element={<RequireAccess codes={route.objectCodes}>{route.element}</RequireAccess>} />
+  ));

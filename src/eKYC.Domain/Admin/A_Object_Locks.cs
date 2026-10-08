@@ -18,4 +18,7 @@ public sealed class A_Object_Locks
     public string? Lgn_Nm { get; set; }
     public string? Usr_Nm_Fst { get; set; }
     public string? Usr_Nm_Lst { get; set; }
+
+    /// <summary>Computed on read: seconds since the lock was taken or last refreshed (server clock, so no time-zone guesswork on the client).</summary>
+    public int? Age_Seconds { get; set; }
 }

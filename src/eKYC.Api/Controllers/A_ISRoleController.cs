@@ -12,6 +12,7 @@ namespace eKYC.Api.Controllers;
 [ApiController]
 [Route("api/admin/roles")]
 [Authorize(Roles = "ADMIN")]
+[RequireObject("tabAdmin")]
 public sealed class A_ISRoleController : ControllerBase
 {
     private readonly IA_ISRoleService _service;

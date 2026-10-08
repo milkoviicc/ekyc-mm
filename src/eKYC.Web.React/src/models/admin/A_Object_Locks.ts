@@ -13,4 +13,6 @@ export type A_Object_Locks = {
   Lgn_Nm?: string | null;
   Usr_Nm_Fst?: string | null;
   Usr_Nm_Lst?: string | null;
+  /** Seconds since the lock was taken or last refreshed (computed by the server clock). */
+  Age_Seconds?: number | null;
 };

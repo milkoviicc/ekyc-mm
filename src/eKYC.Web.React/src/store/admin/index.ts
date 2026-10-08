@@ -28,3 +28,5 @@ export const adminReducer = combineReducers({
   objectTypes: objectTypes.reducer,
   parameters: parameters.reducer,
 });
+
+export * from './actions';

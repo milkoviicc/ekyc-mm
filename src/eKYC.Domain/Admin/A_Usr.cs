@@ -31,4 +31,5 @@ public sealed class A_Usr
     public bool Logged { get; set; }
     public string Current_Host { get; set; } = string.Empty;
     public string? SessionId { get; set; }
+
 }

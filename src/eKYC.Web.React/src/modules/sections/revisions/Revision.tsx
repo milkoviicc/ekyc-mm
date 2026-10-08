@@ -1,7 +1,12 @@
-import { Alert, Box, Button, Paper } from '@mui/material';
-import { GridColDef } from '@mui/x-data-grid';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
+import { Alert, Button } from '@mui/material';
+import { GridActionsCellItem, GridColDef } from '@mui/x-data-grid';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePermissions } from '../../../hooks/usePermissions';
 import { useRevisionTypes } from '../../../hooks/useReferenceData';
 import { isConflict } from '../../../http-common';
 import { CL_Doc_Revisions, DocRevisionFilter } from '../../../models';
@@ -9,9 +14,10 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { showSuccessMessage, showWarningMessage } from '../../../store/message';
 import { createRevision, deleteRevision, getRevisions, updateRevision } from '../../../store/revisions';
 import { formatDate, toApiDate } from '../../../utils/formatting';
-import AppDataGrid from '../../shared/AppDataGrid';
+import AppDataGrid, { clickableRowsSx } from '../../shared/AppDataGrid';
 import ConfirmDialog from '../../shared/ConfirmDialog';
-import FilterGrid from '../../shared/FilterGrid';
+import EmptyState from '../../shared/EmptyState';
+import FilterBar, { ActiveFilter } from '../../shared/FilterBar';
 import LoadingBlock from '../../shared/LoadingBlock';
 import PageHeader from '../../shared/PageHeader';
 import { SelectField } from '../../shared/SelectField';
@@ -19,38 +25,43 @@ import RevisionEditDialog from './RevisionEditDialog';
 
 const REVISION_START_YEAR = 2016;
 
-/** "Revizija" tab - list, create, edit and delete document revisions. */
+/** "Revizija" tab - list, create, edit and delete document revisions. Click a row (or the pencil) to edit it. */
 export default function Revision() {
   const dispatch = useAppDispatch();
   const { revisions, pendingAction, error } = useAppSelector((state) => state.revisions);
   const revisionTypes = useRevisionTypes();
+  // Same roles as the API (CL_Doc_RevisionsController): everyone with the screen can read, only these can change. The server enforces it either way.
+  const { hasRole } = usePermissions();
+  const canWrite = hasRole('UNOS', 'ADMIN', 'REVIZIJA');
 
-  const [filter, setFilter] = useState<DocRevisionFilter>({});
-  const [selected, setSelected] = useState<CL_Doc_Revisions | null>(null);
+  const [draft, setDraft] = useState<DocRevisionFilter>({});
+  const [applied, setApplied] = useState<DocRevisionFilter>({});
   const [editing, setEditing] = useState<{ revision: CL_Doc_Revisions; isNew: boolean } | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [toDelete, setToDelete] = useState<CL_Doc_Revisions | null>(null);
 
   const years = useMemo(() => {
     const last = dayjs().year() + 1;
     return Array.from({ length: last - REVISION_START_YEAR + 1 }, (_, i) => last - i);
   }, []);
 
-  const load = useCallback(
-    (f: DocRevisionFilter) => {
-      setSelected(null);
-      return dispatch(getRevisions(f));
-    },
-    [dispatch],
-  );
+  const load = useCallback((f: DocRevisionFilter) => dispatch(getRevisions(f)), [dispatch]);
 
   useEffect(() => {
     load({});
   }, [load]);
 
-  const changeFilter = (next: DocRevisionFilter) => {
-    setFilter(next);
-    load(next);
+  const apply = (filter: DocRevisionFilter) => {
+    setDraft(filter);
+    setApplied(filter);
+    load(filter);
   };
+
+  const active: ActiveFilter[] = [];
+  if (applied.Year) active.push({ key: 'year', label: `Godina: ${applied.Year}`, onDelete: () => apply({ ...applied, Year: null }) });
+  if (applied.RevTypeId) {
+    const name = revisionTypes?.find((r) => r.RevTypeId === applied.RevTypeId)?.RevTypeName ?? applied.RevTypeId;
+    active.push({ key: 'type', label: `Vrsta: ${name}`, onDelete: () => apply({ ...applied, RevTypeId: null }) });
+  }
 
   const newRevision = () =>
     setEditing({
@@ -67,7 +78,7 @@ export default function Revision() {
     });
 
   // A copy is edited, so cancelling the dialog does not leave the grid showing unsaved changes.
-  const changeRevision = () => selected && setEditing({ isNew: false, revision: { ...selected } });
+  const edit = (revision: CL_Doc_Revisions) => setEditing({ isNew: false, revision: { ...revision } });
 
   const save = async (revision: CL_Doc_Revisions) => {
     const isNew = editing?.isNew ?? false;
@@ -87,16 +98,17 @@ export default function Revision() {
       }
     }
     setEditing(null);
-    load(filter);
+    load(applied);
   };
 
   const remove = async () => {
-    if (!selected) return;
-    setConfirmDelete(false);
+    if (!toDelete) return;
+    const target = toDelete;
+    setToDelete(null);
     try {
-      await dispatch(deleteRevision(selected.CL_Doc_Revision_Id)).unwrap();
+      await dispatch(deleteRevision(target.CL_Doc_Revision_Id)).unwrap();
       dispatch(showSuccessMessage('Revizija je obrisana.'));
-      load(filter);
+      load(applied);
     } catch {
       // surfaced through the store's error state / network layer
     }
@@ -104,68 +116,97 @@ export default function Revision() {
 
   const columns = useMemo<GridColDef<CL_Doc_Revisions>[]>(
     () => [
-      { field: 'Rev_Date', headerName: 'Ndnk. revizije', width: 140, valueFormatter: (v: string) => formatDate(v) },
-      { field: 'Rev_Range_From', headerName: 'Od', width: 120, valueFormatter: (v: string | null) => formatDate(v) },
-      { field: 'Rev_Range_To', headerName: 'Do', width: 120, valueFormatter: (v: string | null) => formatDate(v) },
+      { field: 'Rev_Date', headerName: 'Nadnevak', width: 120, valueFormatter: (v: string) => formatDate(v) },
+      {
+        field: 'Rev_Range_From',
+        headerName: 'Razdoblje',
+        width: 200,
+        valueGetter: (_v, row) => row.Rev_Range_From ?? '',
+        renderCell: (params) =>
+          params.row.Rev_Range_From || params.row.Rev_Range_To
+            ? `${formatDate(params.row.Rev_Range_From) || '…'} – ${formatDate(params.row.Rev_Range_To) || '…'}`
+            : '—',
+      },
       { field: 'Rev_Done_By', headerName: 'Revizor', flex: 1, minWidth: 160 },
-      { field: 'Subject', headerName: 'Predmet', flex: 1.5, minWidth: 200 },
-      { field: 'Recommendation', headerName: 'Preporuka', flex: 1.5, minWidth: 200, sortable: false },
+      { field: 'Subject', headerName: 'Predmet', flex: 1.5, minWidth: 220 },
+      { field: 'Recommendation', headerName: 'Preporuka', flex: 1.5, minWidth: 220, sortable: false },
+      ...(canWrite
+        ? [
+            {
+        field: 'actions',
+        type: 'actions',
+        headerName: '',
+        width: 96,
+        getActions: ({ row }) => [
+          <GridActionsCellItem key="edit" icon={<EditOutlinedIcon />} label="Promijeni reviziju" onClick={() => edit(row)} />,
+          <GridActionsCellItem key="delete" icon={<DeleteOutlinedIcon />} label="Obriši reviziju" onClick={() => setToDelete(row)} />,
+        ],
+      },
+          ] as GridColDef<CL_Doc_Revisions>[]
+        : []),
     ],
-    [],
+    [canWrite],
   );
 
   return (
     <>
-      <PageHeader title="Revizija" />
+      <PageHeader
+        title="Revizija"
+        subtitle="Evidencija provedenih revizija i preporuka."
+        actions={
+          canWrite ? (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={newRevision}>
+              Nova revizija
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <Paper sx={{ p: 2, mb: 2 }} elevation={1}>
-        <FilterGrid>
-          <SelectField
-            label="Godina"
-            value={filter.Year ?? null}
-            onChange={(v) => changeFilter({ ...filter, Year: v })}
-            options={years.map((y) => ({ value: y, label: String(y) }))}
-          />
-          <SelectField
-            label="Vrsta revizije"
-            value={filter.RevTypeId ?? null}
-            onChange={(v) => changeFilter({ ...filter, RevTypeId: v })}
-            options={(revisionTypes ?? []).map((rt) => ({ value: rt.RevTypeId, label: rt.RevTypeName }))}
-          />
-        </FilterGrid>
-      </Paper>
+      <FilterBar active={active} onApply={() => apply(draft)} onClear={() => apply({})}>
+        <SelectField
+          label="Godina"
+          value={draft.Year ?? null}
+          onChange={(v) => setDraft({ ...draft, Year: v })}
+          options={years.map((y) => ({ value: y, label: String(y) }))}
+        />
+        <SelectField
+          label="Vrsta revizije"
+          value={draft.RevTypeId ?? null}
+          onChange={(v) => setDraft({ ...draft, RevTypeId: v })}
+          options={(revisionTypes ?? []).map((rt) => ({ value: rt.RevTypeId, label: rt.RevTypeName }))}
+        />
+      </FilterBar>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => load(applied)}>Pokušaj ponovno</Button>}>
           {error}
         </Alert>
       )}
       {revisions === null ? (
-        error ? null : (
-          <LoadingBlock />
-        )
+        error ? null : <LoadingBlock />
+      ) : revisions.length === 0 ? (
+        <EmptyState
+          icon={<FactCheckOutlinedIcon />}
+          title="Nema revizija"
+          description={active.length ? 'Nijedna revizija ne odgovara filtrima.' : 'Dodajte prvu reviziju.'}
+          action={
+            active.length ? <Button onClick={() => apply({})}>Očisti filtre</Button> : canWrite ? <Button variant="contained" onClick={newRevision}>Nova revizija</Button> : undefined
+          }
+        />
       ) : (
         <AppDataGrid
           rows={revisions}
           columns={columns}
           getRowId={(row) => row.CL_Doc_Revision_Id}
-          onRowClick={(params) => setSelected(params.row)}
-          getRowClassName={(params) => (params.row.CL_Doc_Revision_Id === selected?.CL_Doc_Revision_Id ? 'selected-row' : '')}
-          sx={{ '& .selected-row': { backgroundColor: 'action.selected' }, '& .MuiDataGrid-row': { cursor: 'pointer' } }}
+          getRowHeight={() => 'auto'}
+          onRowClick={(params, event) => {
+            // the action buttons handle their own clicks
+            if ((event.target as HTMLElement).closest('.MuiDataGrid-actionsCell') || !canWrite) return;
+            edit(params.row);
+          }}
+          sx={[clickableRowsSx, { '& .MuiDataGrid-cell': { py: 1 } }]}
         />
       )}
-
-      <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-        <Button variant="contained" onClick={newRevision}>
-          Nova revizija
-        </Button>
-        <Button variant="outlined" disabled={!selected} onClick={changeRevision}>
-          Promjena revizije
-        </Button>
-        <Button variant="outlined" color="error" disabled={!selected} onClick={() => setConfirmDelete(true)}>
-          Brisanje revizije
-        </Button>
-      </Box>
 
       {editing && (
         <RevisionEditDialog
@@ -181,12 +222,12 @@ export default function Revision() {
       )}
 
       <ConfirmDialog
-        open={confirmDelete}
+        open={Boolean(toDelete)}
         title="Brisanje revizije"
-        message={`Obrisati reviziju "${selected?.Subject ?? ''}"?`}
+        message={`Obrisati reviziju „${toDelete?.Subject ?? ''}“? Ovu radnju nije moguće poništiti.`}
         confirmText="Obriši"
         onConfirm={remove}
-        onCancel={() => setConfirmDelete(false)}
+        onCancel={() => setToDelete(null)}
       />
     </>
   );

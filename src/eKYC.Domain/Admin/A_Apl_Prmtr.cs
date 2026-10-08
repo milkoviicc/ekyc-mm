@@ -7,4 +7,5 @@ public sealed class A_Apl_Prmtr
     public string? Prmtr_Cd { get; set; }
     public string? Prmtr_Val { get; set; }
     public string? Prmtr_Dspn { get; set; }
+
 }

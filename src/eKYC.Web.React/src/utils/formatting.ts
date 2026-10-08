@@ -11,6 +11,17 @@ export const formatDateTime = (iso?: string | null): string => (iso ? dayjs(iso)
 export const fullName = (first?: string | null, last?: string | null): string =>
   [first, last].filter((part) => part && part.trim().length > 0).join(' ');
 
+/** Compact duration for lock ages: "manje od 1 min", "12 min", "2 h 5 min", "3 d 4 h". */
+export const formatDuration = (seconds?: number | null): string => {
+  if (seconds === null || seconds === undefined || seconds < 0) return '';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 1) return 'manje od 1 min';
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h ${minutes % 60} min`;
+  return `${Math.floor(hours / 24)} d ${hours % 24} h`;
+};
+
 /** Sends a calendar day to the API as a date-time at local midnight, with no time-zone shift. */
 export const toApiDate = (value: dayjs.Dayjs | null | undefined): string | null =>
   value ? value.format('YYYY-MM-DDT00:00:00') : null;
