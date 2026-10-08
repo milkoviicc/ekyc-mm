@@ -1,0 +1,192 @@
+@page "/reference-data"
+@attribute [Authorize]
+@inject IReferenceDataApiClient ReferenceDataApi
+
+<PageTitle>Reference Data</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Reference Data</MudText>
+
+<MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true">
+    <MudTabPanel Text="States">
+        @if (_states is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudTable T="ClState" Items="_states" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="ClState" SortBy="new Func<ClState, object>(x => x.StateCd)">Code</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="ClState" SortBy="new Func<ClState, object>(x => x.StateNm)">Name</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="ClState" SortBy="new Func<ClState, object>(x => x.PhoneNum ?? string.Empty)">Phone</MudTableSortLabel></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.StateCd</MudTd>
+                    <MudTd DataLabel="Name">@context.StateNm</MudTd>
+                    <MudTd DataLabel="Phone">@context.PhoneNum</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Client Types">
+        @if (_clientTypes is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudTable T="ClientType" Items="_clientTypes" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="ClientType" SortBy="new Func<ClientType, object>(x => x.ClntTypCd)">Code</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="ClientType" SortBy="new Func<ClientType, object>(x => x.ClntTypDspn ?? string.Empty)">Description</MudTableSortLabel></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.ClntTypCd</MudTd>
+                    <MudTd DataLabel="Description">@context.ClntTypDspn</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Risk Classes">
+        @if (_riskClasses is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudTable T="RiskClass" Items="_riskClasses" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="RiskClass" SortBy="new Func<RiskClass, object>(x => x.RskClsId)">Id</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="RiskClass" SortBy="new Func<RiskClass, object>(x => x.RskClsDspn ?? string.Empty)">Description</MudTableSortLabel></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Id">@context.RskClsId</MudTd>
+                    <MudTd DataLabel="Description">@context.RskClsDspn</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Risk Estimates">
+        @if (_riskEstimates is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudTable T="RiskEstimate" Items="_riskEstimates" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="RiskEstimate" SortBy="new Func<RiskEstimate, object>(x => x.LowerPoints ?? 0)">Lower</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="RiskEstimate" SortBy="new Func<RiskEstimate, object>(x => x.UpperPoints ?? 0)">Upper</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="RiskEstimate" SortBy="new Func<RiskEstimate, object>(x => x.RiskLevel ?? string.Empty)">Risk Level</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="RiskEstimate" SortBy="new Func<RiskEstimate, object>(x => x.AnalysisType ?? string.Empty)">Analysis Type</MudTableSortLabel></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Lower">@context.LowerPoints</MudTd>
+                    <MudTd DataLabel="Upper">@context.UpperPoints</MudTd>
+                    <MudTd DataLabel="Risk Level">@context.RiskLevel</MudTd>
+                    <MudTd DataLabel="Analysis Type">@context.AnalysisType</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Ownership Types">
+        @if (_ownershipTypes is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudTable T="OwnershipType" Items="_ownershipTypes" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="OwnershipType" SortBy="new Func<OwnershipType, object>(x => x.OwnrshpTypCd)">Code</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="OwnershipType" SortBy="new Func<OwnershipType, object>(x => x.OwnrshpTypDspn ?? string.Empty)">Description</MudTableSortLabel></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.OwnrshpTypCd</MudTd>
+                    <MudTd DataLabel="Description">@context.OwnrshpTypDspn</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Document Types">
+        @if (_documentTypes is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudTable T="DocumentType" Items="_documentTypes" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="DocumentType" SortBy="new Func<DocumentType, object>(x => x.DocTypeCd)">Code</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="DocumentType" SortBy="new Func<DocumentType, object>(x => x.DocTypeNm)">Name</MudTableSortLabel></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.DocTypeCd</MudTd>
+                    <MudTd DataLabel="Name">@context.DocTypeNm</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Processing Statuses">
+        @if (_processingStatuses is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudTable T="ClientProcessingStatus" Items="_processingStatuses" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="ClientProcessingStatus" SortBy="new Func<ClientProcessingStatus, object>(x => x.ClntPrcsStCd)">Code</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="ClientProcessingStatus" SortBy="new Func<ClientProcessingStatus, object>(x => x.Status ?? string.Empty)">Status</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="ClientProcessingStatus" SortBy="new Func<ClientProcessingStatus, object>(x => x.ClntPrcsStDspn ?? string.Empty)">Description</MudTableSortLabel></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.ClntPrcsStCd</MudTd>
+                    <MudTd DataLabel="Status">@context.Status</MudTd>
+                    <MudTd DataLabel="Description">@context.ClntPrcsStDspn</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private IReadOnlyList<ClState>? _states;
+    private IReadOnlyList<ClientType>? _clientTypes;
+    private IReadOnlyList<RiskClass>? _riskClasses;
+    private IReadOnlyList<RiskEstimate>? _riskEstimates;
+    private IReadOnlyList<OwnershipType>? _ownershipTypes;
+    private IReadOnlyList<DocumentType>? _documentTypes;
+    private IReadOnlyList<ClientProcessingStatus>? _processingStatuses;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Fired concurrently rather than awaited one by one — these are independent reads, no reason
+        // to serialize seven round-trips to the Api.
+        var statesTask = ReferenceDataApi.GetStatesAsync();
+        var clientTypesTask = ReferenceDataApi.GetClientTypesAsync();
+        var riskClassesTask = ReferenceDataApi.GetRiskClassesAsync();
+        var riskEstimatesTask = ReferenceDataApi.GetRiskEstimatesAsync();
+        var ownershipTypesTask = ReferenceDataApi.GetOwnershipTypesAsync();
+        var documentTypesTask = ReferenceDataApi.GetDocumentTypesAsync();
+        var processingStatusesTask = ReferenceDataApi.GetProcessingStatusesAsync();
+
+        await Task.WhenAll(
+            statesTask, clientTypesTask, riskClassesTask, riskEstimatesTask,
+            ownershipTypesTask, documentTypesTask, processingStatusesTask);
+
+        _states = statesTask.Result;
+        _clientTypes = clientTypesTask.Result;
+        _riskClasses = riskClassesTask.Result;
+        _riskEstimates = riskEstimatesTask.Result;
+        _ownershipTypes = ownershipTypesTask.Result;
+        _documentTypes = documentTypesTask.Result;
+        _processingStatuses = processingStatusesTask.Result;
+    }
+}

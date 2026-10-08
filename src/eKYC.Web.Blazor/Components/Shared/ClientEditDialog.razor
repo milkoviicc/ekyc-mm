@@ -1,0 +1,77 @@
+@* Edits the core CL_Clnt fields (status, processing status, risk, PEP, watchlist, remark) — the
+   type-specific detail (name/OIB/address, held in CL_Clnt_Prsn_Phs/Lgl/Bank_EU/Bank_Int) is a separate,
+   larger piece not yet built; see CLAUDE.md's layout-porting notes. Client type is shown read-only since
+   changing it after creation would orphan the type-specific record. *@
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="Client">
+            <MudTextField T="string" Label="Tip klijenta" Value="@Client.Clnt_Typ_Cd" ReadOnly="true" />
+            <MudSelect T="string" Label="Status obrade" @bind-Value="Client.Clnt_Prcsng_St" Immediate="true">
+                @if (ProcessingStatuses is not null)
+                {
+                    @foreach (var ps in ProcessingStatuses)
+                    {
+                        <MudSelectItem T="string" Value="@ps.ClntPrcsStCd">@(ps.Status ?? ps.ClntPrcsStCd)</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+            <MudSelect T="int?" Label="Procjena rizika" @bind-Value="Client.RskEst_Id" Immediate="true">
+                @if (RiskEstimates is not null)
+                {
+                    @foreach (var re in RiskEstimates)
+                    {
+                        <MudSelectItem T="int?" Value="@re.RskEstId">@re.RiskLevel</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+            <MudNumericField T="int?" Label="Bodovi rizika" @bind-Value="Client.Rsk_Pnts" Immediate="true" Min="0" />
+            <MudSelect T="string" Label="PEP" @bind-Value="_pepInd" Immediate="true">
+                <MudSelectItem T="string" Value="@("DA")">DA</MudSelectItem>
+                <MudSelectItem T="string" Value="@("NE")">NE</MudSelectItem>
+                <MudSelectItem T="string" Value="@("NE ODREĐUJE SE")">NE ODREĐUJE SE</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="string" Label="Watchlist" @bind-Value="Client.WtchLst_Ind" Immediate="true">
+                <MudSelectItem T="string" Value="@("N")">NE</MudSelectItem>
+                <MudSelectItem T="string" Value="@("D")">DA</MudSelectItem>
+            </MudSelect>
+            <MudTextField T="string" Label="Napomena" @bind-Value="Client.Rmrk" Immediate="true" Lines="3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Odustanak</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="AcceptAsync">Spremi</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public CL_Clnt Client { get; set; } = default!;
+
+    [Parameter]
+    public IReadOnlyList<ClientProcessingStatus>? ProcessingStatuses { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<RiskEstimate>? RiskEstimates { get; set; }
+
+    private MudForm _form = default!;
+    private string _pepInd = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _pepInd = Client.PEP_Ind ?? "NE ODREĐUJE SE";
+    }
+
+    private async Task AcceptAsync()
+    {
+        await _form.ValidateAsync();
+        Client.PEP_Ind = _pepInd;
+        MudDialog.Close(DialogResult.Ok(Client));
+        await Task.CompletedTask;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

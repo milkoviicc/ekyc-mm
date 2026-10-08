@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/eKYC.Api/eKYC.Api.csproj" />
+    <Project Path="src/eKYC.Application/eKYC.Application.csproj" />
+    <Project Path="src/eKYC.DataAccess/eKYC.DataAccess.csproj" />
+    <Project Path="src/eKYC.Domain/eKYC.Domain.csproj" />
+    <Project Path="src/eKYC.Web.Blazor/eKYC.Web.Blazor.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/eKYC.IntegrationTests/eKYC.IntegrationTests.csproj" />
+    <Project Path="tests/eKYC.UnitTests/eKYC.UnitTests.csproj" />
+  </Folder>
+</Solution>

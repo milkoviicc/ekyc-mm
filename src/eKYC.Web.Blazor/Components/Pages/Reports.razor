@@ -1,0 +1,105 @@
+@page "/izvjesca"
+@attribute [Authorize]
+@inject IReportsApiClient ReportsApi
+@inject IReferenceDataApiClient ReferenceDataApi
+
+<PageTitle>Izvješća</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Izvješća</MudText>
+
+<MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true">
+    <MudTabPanel Text="Vrste rizičnosti - za razdoblje">
+        <MudText Typo="Typo.body2" Class="mb-4" Color="Color.Secondary">
+            Pregled stranaka po razdoblju od - do i po vrstama rizičnosti. Prikazani su samo aktivni i odbijeni klijenti.
+        </MudText>
+        <ReportRiskFilterForm Filter="_filterPeriod" ClientTypes="_clientTypes" RiskEstimates="_riskEstimates"
+                               OnApply="@(() => LoadAsync(ReportKeys.RiskPeriod, _filterPeriod, r => _rowsPeriod = r))" />
+        @if (_rowsPeriod is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (_rowsPeriod.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">Nema rezultata za odabrane kriterije.</MudAlert>
+        }
+        else
+        {
+            <ReportRiskTable Rows="_rowsPeriod" />
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Vrste rizičnosti - za dan">
+        <MudText Typo="Typo.body2" Class="mb-4" Color="Color.Secondary">
+            Pregled stranaka na dan po vrstama rizičnosti. Prikazani su samo aktivni i odbijeni klijenti.
+        </MudText>
+        <ReportRiskFilterForm Filter="_filterDay" ClientTypes="_clientTypes" RiskEstimates="_riskEstimates"
+                               OnApply="@(() => LoadAsync(ReportKeys.RiskDay, _filterDay, r => _rowsDay = r))" />
+        @if (_rowsDay is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (_rowsDay.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">Nema rezultata za odabrane kriterije.</MudAlert>
+        }
+        else
+        {
+            <ReportRiskTable Rows="_rowsDay" />
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Ponovna obrada visoko rizičnih">
+        <MudText Typo="Typo.body2" Class="mb-4" Color="Color.Secondary">
+            Visokorizični klijenti (7+ bodova) koji čekaju ponovnu obradu ili ponovnu dubinsku analizu — status "Upitnik kreiran" ili "Izmjena". Kriteriji su fiksni.
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mb-4"
+                   OnClick="@(() => LoadAsync(ReportKeys.HighRiskReprocess, new ReportRiskFilter(), r => _rowsHighRisk = r))">
+            Osvježi prikaz
+        </MudButton>
+        @if (_rowsHighRisk is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (_rowsHighRisk.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">Nema rezultata za odabrane kriterije.</MudAlert>
+        }
+        else
+        {
+            <ReportRiskTable Rows="_rowsHighRisk" />
+        }
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private ReportRiskFilter _filterPeriod = new();
+    private ReportRiskFilter _filterDay = new();
+    private IReadOnlyList<ReportRiskRow>? _rowsPeriod;
+    private IReadOnlyList<ReportRiskRow>? _rowsDay;
+    private IReadOnlyList<ReportRiskRow>? _rowsHighRisk;
+
+    private IReadOnlyList<ClientType>? _clientTypes;
+    private IReadOnlyList<RiskEstimate>? _riskEstimates;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var clientTypesTask = ReferenceDataApi.GetClientTypesAsync();
+        var riskEstimatesTask = ReferenceDataApi.GetRiskEstimatesAsync();
+        var periodTask = ReportsApi.GetRiskReportAsync(ReportKeys.RiskPeriod, _filterPeriod);
+        var dayTask = ReportsApi.GetRiskReportAsync(ReportKeys.RiskDay, _filterDay);
+        var highRiskTask = ReportsApi.GetRiskReportAsync(ReportKeys.HighRiskReprocess, new ReportRiskFilter());
+
+        await Task.WhenAll(clientTypesTask, riskEstimatesTask, periodTask, dayTask, highRiskTask);
+
+        _clientTypes = clientTypesTask.Result;
+        _riskEstimates = riskEstimatesTask.Result;
+        _rowsPeriod = periodTask.Result;
+        _rowsDay = dayTask.Result;
+        _rowsHighRisk = highRiskTask.Result;
+    }
+
+    private async Task LoadAsync(string reportKey, ReportRiskFilter filter, Action<IReadOnlyList<ReportRiskRow>> assign)
+    {
+        assign(await ReportsApi.GetRiskReportAsync(reportKey, filter));
+    }
+}

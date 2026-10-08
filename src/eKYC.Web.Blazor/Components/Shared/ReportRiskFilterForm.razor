@@ -1,0 +1,86 @@
+@* Shared date-range + client-type + risk-level filter used by the two full-filter report panels
+   ("za razdoblje" and "za dan") on the Izvješća page — mirrors TkPanelReportsFilter01.java. *@
+
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker Label="Ndnk. od" @bind-Date="Filter.AddDtFrom" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker Label="Ndnk. do" @bind-Date="Filter.AddDtTo" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker Label="Ndnk. akt. od" @bind-Date="Filter.MdfDtFrom" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker Label="Ndnk. akt. do" @bind-Date="Filter.MdfDtTo" />
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudSelect T="string" Label="Vrsta klijenta" MultiSelection="true"
+                       SelectedValues="Filter.ClntTypCds ?? []"
+                       SelectedValuesChanged="OnClientTypesChanged">
+                @if (ClientTypes is not null)
+                {
+                    @foreach (var ct in ClientTypes)
+                    {
+                        <MudSelectItem T="string" Value="@ct.ClntTypCd">@ct.ClntTypDspn</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudSelect T="int" Label="Rizičnost" MultiSelection="true"
+                       SelectedValues="Filter.RiskEstIds ?? []"
+                       SelectedValuesChanged="OnRiskEstimatesChanged">
+                @if (RiskEstimates is not null)
+                {
+                    @foreach (var re in RiskEstimates)
+                    {
+                        <MudSelectItem T="int" Value="@re.RskEstId">@re.RiskLevel</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+    <MudStack Row="true" Class="mt-3" Spacing="2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnApply">Primjeni filtar</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="ClearAsync">Isprazni filtar</MudButton>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public ReportRiskFilter Filter { get; set; } = new();
+
+    [Parameter]
+    public IReadOnlyList<ClientType>? ClientTypes { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<RiskEstimate>? RiskEstimates { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnApply { get; set; }
+
+    private Task OnClientTypesChanged(IEnumerable<string> values)
+    {
+        Filter.ClntTypCds = values.ToList();
+        return Task.CompletedTask;
+    }
+
+    private Task OnRiskEstimatesChanged(IEnumerable<int> values)
+    {
+        Filter.RiskEstIds = values.ToList();
+        return Task.CompletedTask;
+    }
+
+    private async Task ClearAsync()
+    {
+        Filter.AddDtFrom = null;
+        Filter.AddDtTo = null;
+        Filter.MdfDtFrom = null;
+        Filter.MdfDtTo = null;
+        Filter.ClntTypCds = null;
+        Filter.RiskEstIds = null;
+        await OnApply.InvokeAsync();
+    }
+}

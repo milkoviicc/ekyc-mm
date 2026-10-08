@@ -1,0 +1,143 @@
+@page "/"
+@attribute [Authorize]
+@inject IDashboardApiClient DashboardApi
+@inject IReferenceDataApiClient ReferenceDataApi
+
+<PageTitle>Nadzorna ploča</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Nadzorna ploča</MudText>
+<MudText Typo="Typo.body2" Class="mb-4" Color="Color.Secondary">
+    Klijenti koji čekaju obradu — aktivni, zatvoreni, prekinuti i odbijeni klijenti se ovdje ne prikazuju.
+</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6" md="2">
+            <MudSelect T="string" Label="Tip klijenta" @bind-Value="_filter.ClntTypCd" Clearable="true">
+                @if (_clientTypes is not null)
+                {
+                    @foreach (var ct in _clientTypes)
+                    {
+                        <MudSelectItem T="string" Value="@ct.ClntTypCd">@ct.ClntTypDspn</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudTextField T="string" Label="Naziv klijenta" @bind-Value="_filter.ClntNm" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="string" Label="Status obrade" @bind-Value="_filter.ClntPrcsngSt" Clearable="true">
+                @if (_processingStatuses is not null)
+                {
+                    @foreach (var ps in _processingStatuses)
+                    {
+                        <MudSelectItem T="string" Value="@ps.ClntPrcsStCd">@(ps.Status ?? ps.ClntPrcsStCd)</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudTextField T="string" Label="OIB" @bind-Value="_filter.Oib" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudSelect T="int?" Label="Rizik" @bind-Value="_filter.RskEstId" Clearable="true">
+                @if (_riskEstimates is not null)
+                {
+                    @foreach (var re in _riskEstimates)
+                    {
+                        <MudSelectItem T="int?" Value="@re.RskEstId">@re.RiskLevel</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+    <MudStack Row="true" Class="mt-3" Spacing="2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilterAsync">Primjeni filtar</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="ClearFilterAsync">Isprazni filtar</MudButton>
+        <MudSpacer />
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadWorkQueueAsync">Osvježi prikaz</MudButton>
+    </MudStack>
+</MudPaper>
+
+@if (_rows is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_rows.Count == 0)
+{
+    <MudAlert Severity="Severity.Success">Nema klijenata koji čekaju obradu.</MudAlert>
+}
+else
+{
+    <MudTable T="DashboardClientRow" Items="_rows" Hover="true" Dense="true" Striped="false"
+              RowStyleFunc="@((row, _) => DashboardRowStyling.GetRowStyle(row))">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.HborId)">HBOR ID</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.ClntNm)">Naziv klijenta</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.VrstaKlijenta)">Vrsta</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.Oib ?? string.Empty)">OIB</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.Status ?? x.ClntPrcsngSt)">Status obrade</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.RskPnts ?? 0)">Rizik (bodovi)</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.PepInd ?? string.Empty)">PEP</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.WtchLstInd)">Watchlist</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.MdfDt)">Zadnja izmjena</MudTableSortLabel></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            @{ var rowStyle = DashboardRowStyling.GetRowStyle(context); }
+            <MudTd DataLabel="HBOR ID" Style="@DashboardRowStyling.GetHborIdCellStyle(context)">@context.HborId</MudTd>
+            <MudTd DataLabel="Naziv klijenta" Style="@rowStyle">@context.ClntNm</MudTd>
+            <MudTd DataLabel="Vrsta" Style="@rowStyle">@context.VrstaKlijenta</MudTd>
+            <MudTd DataLabel="OIB" Style="@rowStyle">@context.Oib</MudTd>
+            <MudTd DataLabel="Status obrade" Style="@rowStyle">
+                <MudChip T="string" Size="Size.Small" Color="Color.Info">@(context.Status ?? context.ClntPrcsngSt)</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Rizik (bodovi)" Style="@rowStyle">@context.RskPnts</MudTd>
+            <MudTd DataLabel="PEP" Style="@rowStyle">@context.PepInd</MudTd>
+            <MudTd DataLabel="Watchlist" Style="@rowStyle">@context.WtchLstInd</MudTd>
+            <MudTd DataLabel="Zadnja izmjena" Style="@rowStyle">@context.MdfDt.ToString("dd.MM.yyyy. HH:mm")  (@context.ModifiedByName)</MudTd>
+        </RowTemplate>
+    </MudTable>
+    <MudText Typo="Typo.caption" Class="mt-2" Color="Color.Secondary">
+        Boja retka odražava status obrade i rizik (zlatna = odbijen, tamnocrvena = izmjena uz visok rizik, blijedozelena = aktivan, blijedožuta = ostalo).
+        Ljubičasta HBOR ID ćelija označava klijente kod kojih se matični podaci razlikuju od HBOR izvora.
+    </MudText>
+}
+
+@code {
+    private DashboardFilter _filter = new();
+    private IReadOnlyList<DashboardClientRow>? _rows;
+    private IReadOnlyList<ClientType>? _clientTypes;
+    private IReadOnlyList<ClientProcessingStatus>? _processingStatuses;
+    private IReadOnlyList<RiskEstimate>? _riskEstimates;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var clientTypesTask = ReferenceDataApi.GetClientTypesAsync();
+        var processingStatusesTask = ReferenceDataApi.GetProcessingStatusesAsync();
+        var riskEstimatesTask = ReferenceDataApi.GetRiskEstimatesAsync();
+        var workQueueTask = DashboardApi.GetWorkQueueAsync(_filter);
+
+        await Task.WhenAll(clientTypesTask, processingStatusesTask, riskEstimatesTask, workQueueTask);
+
+        _clientTypes = clientTypesTask.Result;
+        _processingStatuses = processingStatusesTask.Result;
+        _riskEstimates = riskEstimatesTask.Result;
+        _rows = workQueueTask.Result;
+    }
+
+    private async Task ApplyFilterAsync() => await LoadWorkQueueAsync();
+
+    private async Task ClearFilterAsync()
+    {
+        _filter = new DashboardFilter();
+        await LoadWorkQueueAsync();
+    }
+
+    private async Task LoadWorkQueueAsync()
+    {
+        _rows = null;
+        StateHasChanged();
+        _rows = await DashboardApi.GetWorkQueueAsync(_filter);
+    }
+}

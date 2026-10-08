@@ -1,0 +1,62 @@
+@* Create/edit form for a single CL_Doc_Revisions row — opened from the Revizija page via IDialogService.
+   Mirrors TkWindowEditRevision.java's fields; the (non-functional in the legacy app) document-type
+   sub-selector and file upload are intentionally not ported — see CLAUDE.md's layout-porting notes. *@
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="Revision">
+            <MudSelect T="int" Label="Vrsta revizije" @bind-Value="Revision.CL_Doc_Typ_Rev_Id" Required="true" RequiredError="Vrsta revizije je obvezna.">
+                @if (RevisionTypes is not null)
+                {
+                    @foreach (var rt in RevisionTypes)
+                    {
+                        <MudSelectItem T="int" Value="@rt.RevTypeId">@rt.RevTypeName</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+            <MudDatePicker Label="Nadnevak revizije" @bind-Date="_revDate" Required="true" RequiredError="Nadnevak revizije je obvezan." />
+            <MudDatePicker Label="Vrijedi od" @bind-Date="Revision.Rev_Range_From" />
+            <MudDatePicker Label="Vrijedi do" @bind-Date="Revision.Rev_Range_To" />
+            <MudTextField T="string" Label="Revizor" @bind-Value="Revision.Rev_Done_By" Immediate="true" Required="true" RequiredError="Revizor je obvezan." MaxLength="150" Lines="2" />
+            <MudTextField T="string" Label="Predmet" @bind-Value="Revision.Subject" Immediate="true" Required="true" RequiredError="Predmet je obvezan." MaxLength="150" Lines="2" />
+            <MudTextField T="string" Label="Preporuka" @bind-Value="Revision.Recommendation" Immediate="true" MaxLength="250" Lines="2" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Odustanak</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="AcceptAsync">Prihvat</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public CL_Doc_Revisions Revision { get; set; } = default!;
+
+    [Parameter]
+    public IReadOnlyList<RevisionType>? RevisionTypes { get; set; }
+
+    private MudForm _form = default!;
+    private DateTime? _revDate;
+
+    protected override void OnInitialized()
+    {
+        _revDate = Revision.Rev_Date == default ? null : Revision.Rev_Date;
+    }
+
+    private async Task AcceptAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid || _revDate is null)
+        {
+            return;
+        }
+
+        Revision.Rev_Date = _revDate.Value;
+        MudDialog.Close(DialogResult.Ok(Revision));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

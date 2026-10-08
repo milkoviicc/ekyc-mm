@@ -1,0 +1,17 @@
+## .NET
+bin/
+obj/
+*.user
+
+## Rider / VS
+.vs/
+.idea/
+*.suo
+
+## Secrets — never commit real connection strings or credentials.
+## Local dev secrets live in `dotnet user-secrets` (see README), not in appsettings*.json.
+appsettings.Production.json
+appsettings.*.local.json
+
+## Local secrets
+.env

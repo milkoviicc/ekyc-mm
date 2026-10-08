@@ -1,0 +1,99 @@
+@page "/administriranje"
+@attribute [Authorize]
+@inject IA_Object_LocksApiClient AdminLocksApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Administriranje</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Administriranje</MudText>
+
+<MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true">
+    <MudTabPanel Text="Prava pristupa">
+        <MudAlert Severity="Severity.Info">Nije još implementirano — upravljanje korisnicima, ulogama i pravima pristupa.</MudAlert>
+    </MudTabPanel>
+    <MudTabPanel Text="Rizici">
+        <MudAlert Severity="Severity.Info">Nije još implementirano — upravljanje kriterijima i razredima rizičnosti.</MudAlert>
+    </MudTabPanel>
+    <MudTabPanel Text="Definicije">
+        <MudAlert Severity="Severity.Info">Nije još implementirano — uređivanje šifarnika (za pregled vidi Reference Data).</MudAlert>
+    </MudTabPanel>
+    <MudTabPanel Text="Zaključavanje">
+        <MudText Typo="Typo.body2" Class="mb-4" Color="Color.Secondary">
+            Zapisi o zaključanim slogovima (korisnik trenutno uređuje slog). Ručno brisanje oslobađa zaključavanje —
+            koristiti samo kada je sigurno da korisnik više ne uređuje slog (npr. nakon pada sesije).
+        </MudText>
+        @if (_locks is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (_locks.Count == 0)
+        {
+            <MudAlert Severity="Severity.Success">Nema aktivnih zaključavanja.</MudAlert>
+        }
+        else
+        {
+            <MudTable T="A_Object_Locks" Items="_locks" Hover="true" Dense="true" Striped="true" @bind-SelectedItem="_selectedLock">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="A_Object_Locks" SortBy="new Func<A_Object_Locks, object>(x => x.Object_Class)">Klasa objekta</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="A_Object_Locks" SortBy="new Func<A_Object_Locks, object>(x => x.Object_Name ?? string.Empty)">Naziv objekta</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="A_Object_Locks" SortBy="new Func<A_Object_Locks, object>(x => x.Lgn_Nm ?? string.Empty)">Korisnik</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="A_Object_Locks" SortBy="new Func<A_Object_Locks, object>(x => x.Computer_Name ?? string.Empty)">Računalo</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="A_Object_Locks" SortBy="new Func<A_Object_Locks, object>(x => x.Locked_At)">Zaključano</MudTableSortLabel></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Klasa objekta">@context.Object_Class</MudTd>
+                    <MudTd DataLabel="Naziv objekta">@context.Object_Name</MudTd>
+                    <MudTd DataLabel="Korisnik">@context.Usr_Nm_Fst @context.Usr_Nm_Lst (@context.Lgn_Nm)</MudTd>
+                    <MudTd DataLabel="Računalo">@context.Computer_Name</MudTd>
+                    <MudTd DataLabel="Zaključano">@context.Locked_At.ToString("dd.MM.yyyy. HH:mm")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+        <MudStack Row="true" Class="mt-4" Spacing="2">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadLocksAsync">Osvježi prikaz</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" Disabled="_selectedLock is null" OnClick="DeleteLockAsync">Brisanje zaključavanja</MudButton>
+        </MudStack>
+    </MudTabPanel>
+    <MudTabPanel Text="Provjera klijenata">
+        <MudAlert Severity="Severity.Info">Nije još implementirano.</MudAlert>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private IReadOnlyList<A_Object_Locks>? _locks;
+    private A_Object_Locks? _selectedLock;
+
+    protected override async Task OnInitializedAsync() => await LoadLocksAsync();
+
+    private async Task LoadLocksAsync()
+    {
+        _selectedLock = null;
+        _locks = await AdminLocksApi.GetAllAsync();
+    }
+
+    private async Task DeleteLockAsync()
+    {
+        if (_selectedLock is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, $"Obrisati zaključavanje za \"{_selectedLock.Object_Class}\" (korisnik {_selectedLock.Lgn_Nm})?" },
+            { x => x.ConfirmText, "Obriši" },
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Brisanje zaključavanja", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        await AdminLocksApi.DeleteAsync(_selectedLock.Object_Lock_Id);
+        Snackbar.Add("Zaključavanje je obrisano.", Severity.Success);
+        await LoadLocksAsync();
+    }
+}

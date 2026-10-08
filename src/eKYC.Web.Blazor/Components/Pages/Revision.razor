@@ -1,0 +1,188 @@
+@page "/revizija"
+@attribute [Authorize]
+@inject ICL_Doc_RevisionsApiClient RevisionsApi
+@inject IReferenceDataApiClient ReferenceDataApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Revizija</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Revizija</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="int?" Label="Godina" @bind-Value="_filter.Year" @bind-Value:after="LoadAsync" Clearable="true">
+                @foreach (var year in _years)
+                {
+                    <MudSelectItem T="int?" Value="@year">@year</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="int?" Label="Vrsta revizije" @bind-Value="_filter.RevTypeId" @bind-Value:after="LoadAsync" Clearable="true">
+                @if (_revisionTypes is not null)
+                {
+                    @foreach (var rt in _revisionTypes)
+                    {
+                        <MudSelectItem T="int?" Value="@rt.RevTypeId">@rt.RevTypeName</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_revisions is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudTable T="CL_Doc_Revisions" Items="_revisions" Hover="true" Dense="true" Striped="true"
+              @bind-SelectedItem="_selectedRevision">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel T="CL_Doc_Revisions" SortBy="new Func<CL_Doc_Revisions, object>(x => x.Rev_Date)">Ndnk. revizije</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="CL_Doc_Revisions" SortBy="new Func<CL_Doc_Revisions, object>(x => x.Rev_Range_From ?? DateTime.MinValue)">Od</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="CL_Doc_Revisions" SortBy="new Func<CL_Doc_Revisions, object>(x => x.Rev_Range_To ?? DateTime.MinValue)">Do</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="CL_Doc_Revisions" SortBy="new Func<CL_Doc_Revisions, object>(x => x.Rev_Done_By)">Revizor</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="CL_Doc_Revisions" SortBy="new Func<CL_Doc_Revisions, object>(x => x.Subject)">Predmet</MudTableSortLabel></MudTh>
+            <MudTh>Preporuka</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Ndnk. revizije">@context.Rev_Date.ToString("dd.MM.yyyy.")</MudTd>
+            <MudTd DataLabel="Od">@context.Rev_Range_From?.ToString("dd.MM.yyyy.")</MudTd>
+            <MudTd DataLabel="Do">@context.Rev_Range_To?.ToString("dd.MM.yyyy.")</MudTd>
+            <MudTd DataLabel="Revizor">@context.Rev_Done_By</MudTd>
+            <MudTd DataLabel="Predmet">@context.Subject</MudTd>
+            <MudTd DataLabel="Preporuka">@context.Recommendation</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+<MudStack Row="true" Class="mt-4" Spacing="2">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewRevisionAsync">Nova revizija</MudButton>
+    <MudButton Variant="Variant.Outlined" Disabled="_selectedRevision is null" OnClick="ChangeRevisionAsync">Promjena revizije</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Error" Disabled="_selectedRevision is null" OnClick="DeleteRevisionAsync">Brisanje revizije</MudButton>
+</MudStack>
+
+@code {
+    private static readonly int RevisionStartYear = 2016;
+
+    private DocRevisionFilter _filter = new();
+    private IReadOnlyList<CL_Doc_Revisions>? _revisions;
+    private IReadOnlyList<RevisionType>? _revisionTypes;
+    private CL_Doc_Revisions? _selectedRevision;
+    private List<int> _years = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _years = Enumerable.Range(RevisionStartYear, DateTime.Today.Year + 1 - RevisionStartYear + 1).Reverse().ToList();
+
+        _revisionTypes = await ReferenceDataApi.GetRevisionTypesAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _selectedRevision = null;
+        _revisions = await RevisionsApi.GetAllAsync(_filter);
+    }
+
+    private async Task NewRevisionAsync()
+    {
+        var revision = new CL_Doc_Revisions
+        {
+            Rev_Date = DateTime.Today,
+        };
+
+        await OpenEditDialogAsync(revision, isNew: true);
+    }
+
+    private async Task ChangeRevisionAsync()
+    {
+        if (_selectedRevision is null)
+        {
+            return;
+        }
+
+        // Edit a copy so a cancelled dialog doesn't leave the grid showing unsaved changes.
+        var copy = new CL_Doc_Revisions
+        {
+            CL_Doc_Revision_Id = _selectedRevision.CL_Doc_Revision_Id,
+            CL_Doc_Typ_Rev_Id = _selectedRevision.CL_Doc_Typ_Rev_Id,
+            Rev_Date = _selectedRevision.Rev_Date,
+            Rev_Range_From = _selectedRevision.Rev_Range_From,
+            Rev_Range_To = _selectedRevision.Rev_Range_To,
+            Rev_Done_By = _selectedRevision.Rev_Done_By,
+            Subject = _selectedRevision.Subject,
+            Recommendation = _selectedRevision.Recommendation,
+            row_version = _selectedRevision.row_version,
+            tenant_id = _selectedRevision.tenant_id,
+        };
+
+        await OpenEditDialogAsync(copy, isNew: false);
+    }
+
+    private async Task OpenEditDialogAsync(CL_Doc_Revisions revision, bool isNew)
+    {
+        var parameters = new DialogParameters<RevisionEditDialog>
+        {
+            { x => x.Revision, revision },
+            { x => x.RevisionTypes, _revisionTypes },
+        };
+
+        var dialog = await DialogService.ShowAsync<RevisionEditDialog>(isNew ? "Nova revizija" : "Promjena revizije", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            if (isNew)
+            {
+                await RevisionsApi.CreateAsync(revision);
+                Snackbar.Add("Revizija je spremljena.", Severity.Success);
+            }
+            else
+            {
+                await RevisionsApi.UpdateAsync(revision);
+                Snackbar.Add("Revizija je ažurirana.", Severity.Success);
+            }
+
+            await LoadAsync();
+        }
+        catch (RevisionConcurrencyConflictException)
+        {
+            Snackbar.Add("Revizija je u međuvremenu promijenjena od strane drugog korisnika. Podaci su osvježeni.", Severity.Warning);
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteRevisionAsync()
+    {
+        if (_selectedRevision is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, $"Obrisati reviziju \"{_selectedRevision.Subject}\"?" },
+            { x => x.ConfirmText, "Obriši" },
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Brisanje revizije", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        await RevisionsApi.DeleteAsync(_selectedRevision.CL_Doc_Revision_Id);
+        Snackbar.Add("Revizija je obrisana.", Severity.Success);
+        await LoadAsync();
+    }
+}

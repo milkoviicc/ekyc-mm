@@ -1,0 +1,112 @@
+@page "/clients"
+@attribute [Authorize]
+@inject ICL_ClntApiClient ClientsApi
+@inject IReferenceDataApiClient ReferenceDataApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Clients</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Clients</MudText>
+<MudText Typo="Typo.body2" Class="mb-4" Color="Color.Secondary">Click a row to edit.</MudText>
+
+@if (_clients is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_clients.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No clients found.</MudAlert>
+}
+else
+{
+    <MudTable T="CL_Clnt" Items="_clients" Hover="true" Dense="true" OnRowClick="@(e => e.Item is null ? Task.CompletedTask : OpenEditDialogAsync(e.Item))">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel T="CL_Clnt" SortBy="new Func<CL_Clnt, object>(x => x.Clnt_Id)">Id</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="CL_Clnt" SortBy="new Func<CL_Clnt, object>(x => x.Clnt_Typ_Cd)">Type</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="CL_Clnt" SortBy="new Func<CL_Clnt, object>(x => x.Clnt_St)">Status</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="CL_Clnt" SortBy="new Func<CL_Clnt, object>(x => x.Clnt_Prcsng_St)">Processing Status</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="CL_Clnt" SortBy="new Func<CL_Clnt, object>(x => x.Rsk_Pnts ?? 0)">Risk Points</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="CL_Clnt" SortBy="new Func<CL_Clnt, object>(x => x.PEP_Ind ?? string.Empty)">PEP</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="CL_Clnt" SortBy="new Func<CL_Clnt, object>(x => x.WtchLst_Ind)">Watchlist</MudTableSortLabel></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Clnt_Id</MudTd>
+            <MudTd DataLabel="Type">@context.Clnt_Typ_Cd</MudTd>
+            <MudTd DataLabel="Status">@context.Clnt_St</MudTd>
+            <MudTd DataLabel="Processing Status">@context.Clnt_Prcsng_St</MudTd>
+            <MudTd DataLabel="Risk Points">@context.Rsk_Pnts</MudTd>
+            <MudTd DataLabel="PEP">@context.PEP_Ind</MudTd>
+            <MudTd DataLabel="Watchlist">@context.WtchLst_Ind</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private IReadOnlyList<CL_Clnt>? _clients;
+    private IReadOnlyList<ClientProcessingStatus>? _processingStatuses;
+    private IReadOnlyList<RiskEstimate>? _riskEstimates;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var clientsTask = ClientsApi.GetAllAsync();
+        var statusesTask = ReferenceDataApi.GetProcessingStatusesAsync();
+        var riskEstimatesTask = ReferenceDataApi.GetRiskEstimatesAsync();
+
+        await Task.WhenAll(clientsTask, statusesTask, riskEstimatesTask);
+
+        _clients = clientsTask.Result;
+        _processingStatuses = statusesTask.Result;
+        _riskEstimates = riskEstimatesTask.Result;
+    }
+
+    private async Task OpenEditDialogAsync(CL_Clnt client)
+    {
+        // Edit a copy so a cancelled dialog doesn't leave the grid showing unsaved changes.
+        var copy = new CL_Clnt
+        {
+            Clnt_Id = client.Clnt_Id,
+            HBOR_ID = client.HBOR_ID,
+            Clnt_Typ_Cd = client.Clnt_Typ_Cd,
+            Clnt_St = client.Clnt_St,
+            Clnt_Prcsng_St = client.Clnt_Prcsng_St,
+            RskEst_Id = client.RskEst_Id,
+            Rsk_Pnts = client.Rsk_Pnts,
+            PEP_Ind = client.PEP_Ind,
+            Rmrk = client.Rmrk,
+            WtchLst_Ind = client.WtchLst_Ind,
+            Add_By = client.Add_By,
+            Add_Dt = client.Add_Dt,
+            Mdf_By = client.Mdf_By,
+            Mdf_Dt = client.Mdf_Dt,
+            row_version = client.row_version,
+            tenant_id = client.tenant_id,
+        };
+
+        var parameters = new DialogParameters<ClientEditDialog>
+        {
+            { x => x.Client, copy },
+            { x => x.ProcessingStatuses, _processingStatuses },
+            { x => x.RiskEstimates, _riskEstimates },
+        };
+
+        var dialog = await DialogService.ShowAsync<ClientEditDialog>($"Klijent #{client.Clnt_Id}", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            await ClientsApi.UpdateAsync(copy);
+            Snackbar.Add("Klijent je ažuriran.", Severity.Success);
+            _clients = await ClientsApi.GetAllAsync();
+        }
+        catch (ClientConcurrencyConflictException)
+        {
+            Snackbar.Add("Klijent je u međuvremenu promijenjen od strane drugog korisnika. Podaci su osvježeni.", Severity.Warning);
+            _clients = await ClientsApi.GetAllAsync();
+        }
+    }
+}

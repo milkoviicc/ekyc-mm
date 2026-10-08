@@ -1,0 +1,35 @@
+@* Shared grid used by each risk-report panel on the "Izvješća" page. *@
+
+<MudTable T="ReportRiskRow" Items="Rows" Hover="true" Dense="true" Striped="true">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel T="ReportRiskRow" SortBy="new Func<ReportRiskRow, object>(x => x.ClntNm)">Naziv klijenta</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ReportRiskRow" SortBy="new Func<ReportRiskRow, object>(x => x.VrstaKlijenta)">Vrsta</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ReportRiskRow" SortBy="new Func<ReportRiskRow, object>(x => x.Oib ?? string.Empty)">OIB</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ReportRiskRow" SortBy="new Func<ReportRiskRow, object>(x => x.ClntPrcsngSt)">Status obrade</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ReportRiskRow" SortBy="new Func<ReportRiskRow, object>(x => x.RiskLevel ?? string.Empty)">Rizik</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ReportRiskRow" SortBy="new Func<ReportRiskRow, object>(x => x.RskPnts ?? 0)">Bodovi</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ReportRiskRow" SortBy="new Func<ReportRiskRow, object>(x => x.PepInd)">PEP</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ReportRiskRow" SortBy="new Func<ReportRiskRow, object>(x => x.WtchLstInd)">Watchlist</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ReportRiskRow" SortBy="new Func<ReportRiskRow, object>(x => x.AddDt)">Datum unosa</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ReportRiskRow" SortBy="new Func<ReportRiskRow, object>(x => x.MdfDt)">Zadnja izmjena</MudTableSortLabel></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Naziv klijenta">@context.ClntNm</MudTd>
+        <MudTd DataLabel="Vrsta">@context.VrstaKlijenta</MudTd>
+        <MudTd DataLabel="OIB">@context.Oib</MudTd>
+        <MudTd DataLabel="Status obrade">
+            <MudChip T="string" Size="Size.Small" Color="Color.Info">@context.ClntPrcsngSt</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Rizik">@context.RiskLevel</MudTd>
+        <MudTd DataLabel="Bodovi">@context.RskPnts</MudTd>
+        <MudTd DataLabel="PEP">@context.PepInd</MudTd>
+        <MudTd DataLabel="Watchlist">@context.WtchLstInd</MudTd>
+        <MudTd DataLabel="Datum unosa">@context.AddDt.ToString("dd.MM.yyyy.")</MudTd>
+        <MudTd DataLabel="Zadnja izmjena">@context.MdfDt.ToString("dd.MM.yyyy.")</MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ReportRiskRow> Rows { get; set; } = [];
+}

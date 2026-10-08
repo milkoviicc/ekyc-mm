@@ -1,0 +1,165 @@
+@page "/klijenti-pregled"
+@attribute [Authorize]
+@inject IClientAnalysisApiClient ClientAnalysisApi
+@inject IReferenceDataApiClient ReferenceDataApi
+
+<PageTitle>Klijenti - pregled</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Klijenti - pregled</MudText>
+<MudText Typo="Typo.body2" Class="mb-4" Color="Color.Secondary">
+    Pregled klijenata odabranog tipa, samo za čitanje — za obradu klijenata vidi Klijenti - analiza.
+</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6" md="3">
+            <MudTextField T="string" Label="Naziv klijenta" @bind-Value="_filter.ClntNm" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="string" Label="Status obrade" @bind-Value="_filter.ClntPrcsngSt" Clearable="true">
+                @if (_processingStatuses is not null)
+                {
+                    @foreach (var ps in _processingStatuses)
+                    {
+                        <MudSelectItem T="string" Value="@ps.ClntPrcsStCd">@(ps.Status ?? ps.ClntPrcsStCd)</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudTextField T="string" Label="OIB" @bind-Value="_filter.Oib" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudSelect T="int?" Label="Rizik" @bind-Value="_filter.RskEstId" Clearable="true">
+                @if (_riskEstimates is not null)
+                {
+                    @foreach (var re in _riskEstimates)
+                    {
+                        <MudSelectItem T="int?" Value="@re.RskEstId">@re.RiskLevel</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+    <MudStack Row="true" Class="mt-3" Spacing="2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilterAsync">Primjeni filtar</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="ClearFilterAsync">Isprazni filtar</MudButton>
+    </MudStack>
+</MudPaper>
+
+<MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true" ActivePanelIndex="_activeIndex" ActivePanelIndexChanged="OnTabChangedAsync">
+    <MudTabPanel Text="Fizičke osobe">
+        @{ var rows = _rowsByType.GetValueOrDefault("P"); }
+        @if (rows is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (rows.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">Nema klijenata za odabrane kriterije.</MudAlert>
+        }
+        else
+        {
+            <ClientAnalysisTable Rows="rows" />
+        }
+    </MudTabPanel>
+    <MudTabPanel Text="Pravne osobe">
+        @{ var rows = _rowsByType.GetValueOrDefault("L"); }
+        @if (rows is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (rows.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">Nema klijenata za odabrane kriterije.</MudAlert>
+        }
+        else
+        {
+            <ClientAnalysisTable Rows="rows" />
+        }
+    </MudTabPanel>
+    <MudTabPanel Text="Banke EU">
+        @{ var rows = _rowsByType.GetValueOrDefault("BEU"); }
+        @if (rows is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (rows.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">Nema klijenata za odabrane kriterije.</MudAlert>
+        }
+        else
+        {
+            <ClientAnalysisTable Rows="rows" />
+        }
+    </MudTabPanel>
+    <MudTabPanel Text="Banke izvan EU">
+        @{ var rows = _rowsByType.GetValueOrDefault("BINT"); }
+        @if (rows is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (rows.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">Nema klijenata za odabrane kriterije.</MudAlert>
+        }
+        else
+        {
+            <ClientAnalysisTable Rows="rows" />
+        }
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    // Same backend as Klijenti - analiza (IClientAnalysisApiClient) — the legacy app's TkLayoutOverview
+    // binds to the identical TkLayoutClientsPhs/Lgl/BEU/BWO data source as TkLayoutAnaliza, distinguished
+    // only by disabling row-click-to-edit. That distinction isn't meaningful yet since editing isn't
+    // built in either page — see CLAUDE.md's layout-porting notes when edit windows get added.
+    private static readonly string[] TypeCodesByTabIndex = ["P", "L", "BEU", "BINT"];
+
+    private DashboardFilter _filter = new();
+    private int _activeIndex;
+    private readonly Dictionary<string, IReadOnlyList<DashboardClientRow>?> _rowsByType = new();
+    private IReadOnlyList<ClientProcessingStatus>? _processingStatuses;
+    private IReadOnlyList<RiskEstimate>? _riskEstimates;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var processingStatusesTask = ReferenceDataApi.GetProcessingStatusesAsync();
+        var riskEstimatesTask = ReferenceDataApi.GetRiskEstimatesAsync();
+        await Task.WhenAll(processingStatusesTask, riskEstimatesTask);
+
+        _processingStatuses = processingStatusesTask.Result;
+        _riskEstimates = riskEstimatesTask.Result;
+
+        await LoadTabAsync(TypeCodesByTabIndex[_activeIndex]);
+    }
+
+    private async Task OnTabChangedAsync(int newIndex)
+    {
+        _activeIndex = newIndex;
+        await LoadTabAsync(TypeCodesByTabIndex[newIndex]);
+    }
+
+    private async Task LoadTabAsync(string clntTypCd)
+    {
+        if (_rowsByType.ContainsKey(clntTypCd))
+        {
+            return;
+        }
+
+        _rowsByType[clntTypCd] = await ClientAnalysisApi.GetByTypeAsync(clntTypCd, _filter);
+    }
+
+    private async Task ApplyFilterAsync()
+    {
+        _rowsByType.Clear();
+        await LoadTabAsync(TypeCodesByTabIndex[_activeIndex]);
+    }
+
+    private async Task ClearFilterAsync()
+    {
+        _filter = new DashboardFilter();
+        await ApplyFilterAsync();
+    }
+}

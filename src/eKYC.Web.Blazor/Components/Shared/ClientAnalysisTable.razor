@@ -1,0 +1,29 @@
+@* Shared grid used by each client-type tab on the "Klijenti - analiza" page — same columns, different data. *@
+
+<MudTable T="DashboardClientRow" Items="Rows" Hover="true" Dense="true" Striped="true">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.ClntNm)">Naziv klijenta</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.Oib ?? string.Empty)">OIB</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.Status ?? x.ClntPrcsngSt)">Status obrade</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.RskPnts ?? 0)">Rizik (bodovi)</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.PepInd ?? string.Empty)">PEP</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.WtchLstInd)">Watchlist</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="DashboardClientRow" SortBy="new Func<DashboardClientRow, object>(x => x.MdfDt)">Zadnja izmjena</MudTableSortLabel></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Naziv klijenta">@context.ClntNm</MudTd>
+        <MudTd DataLabel="OIB">@context.Oib</MudTd>
+        <MudTd DataLabel="Status obrade">
+            <MudChip T="string" Size="Size.Small" Color="Color.Info">@(context.Status ?? context.ClntPrcsngSt)</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Rizik (bodovi)">@context.RskPnts</MudTd>
+        <MudTd DataLabel="PEP">@context.PepInd</MudTd>
+        <MudTd DataLabel="Watchlist">@context.WtchLstInd</MudTd>
+        <MudTd DataLabel="Zadnja izmjena">@context.MdfDt.ToString("dd.MM.yyyy. HH:mm") (@context.ModifiedByName)</MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<DashboardClientRow> Rows { get; set; } = [];
+}
